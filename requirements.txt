@@ -1,0 +1,6 @@
+paho-mqtt
+docker
+kubernetes
+pyyaml
+pytest
+flake8
