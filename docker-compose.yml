@@ -1,0 +1,22 @@
+services:
+  edge-manager:
+    container_name: edge-manager
+    build: .
+    restart: always
+    ports:
+      - "5002:5000"
+    environment:
+      - MQTT_BROKER=mosquitto
+      - KUBERNETES_ENABLED=true
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mqtt-broker
+    restart: always
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./configs/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro

@@ -1,0 +1,12 @@
+# Ignore Python virtual environments
+venv/
+__pycache__/
+
+# Ignore logs and temp files
+*.log
+*.tmp
+
+# Ignore Docker-related files
+.env
+*.pid
+*.sock
