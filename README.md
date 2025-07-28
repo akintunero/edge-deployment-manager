@@ -357,7 +357,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-**Built with ❤️ by Olúmáyòwá Akinkuehinmi for the edge computing community**
+**Built by Olúmáyòwá Akinkuehinmi for the edge computing community**
 
 ---
 
@@ -366,7 +366,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 **Olúmáyòwá Akinkuehinmi** - [akintunero101@gmail.com](mailto:akintunero101@gmail.com)
 
 - GitHub: [@akintunero](https://github.com/akintunero)
-- LinkedIn: [Olúmáyòwá Akinkuehinmi](https://linkedin.com/in/akintunero)
+- LinkedIn: [Olúmáyòwá Akinkuehinmi](https://linkedin.com/in/olumayowaa)
 - Twitter: [@akintunero](https://twitter.com/akintunero)
 
 ## 🤝 Support the Project
@@ -381,4 +381,4 @@ If you find this project helpful, please consider:
 
 ---
 
-**Built with ❤️ for the edge computing community**
+**Built for the edge computing community**
