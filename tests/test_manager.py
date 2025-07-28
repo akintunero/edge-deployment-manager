@@ -79,9 +79,9 @@ class TestEdgeDeploymentManager(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir)
 
-    @patch('manager.MQTTHandler')
-    @patch('manager.DockerHandler')
-    @patch('manager.KubernetesController')
+    @patch('src.manager.MQTTHandler')
+    @patch('src.manager.DockerHandler')
+    @patch('src.manager.KubernetesController')
     def test_manager_initialization(self, mock_k8s, mock_docker, mock_mqtt):
         """Test manager initialization"""
         # Mock the handlers to avoid actual connections
@@ -109,9 +109,9 @@ class TestEdgeDeploymentManager(unittest.TestCase):
         with self.assertRaises(SystemExit):
             EdgeDeploymentManager("nonexistent_config.yaml")
 
-    @patch('manager.MQTTHandler')
-    @patch('manager.DockerHandler')
-    @patch('manager.KubernetesController')
+    @patch('src.manager.MQTTHandler')
+    @patch('src.manager.DockerHandler')
+    @patch('src.manager.KubernetesController')
     def test_service_initialization(self, mock_k8s, mock_docker, mock_mqtt):
         """Test service initialization"""
         # Mock the handlers
@@ -140,7 +140,7 @@ class TestMQTTHandler(unittest.TestCase):
             'client_id': 'test-client'
         }
 
-    @patch('mqtt_handler.mqtt.Client')
+    @patch('src.mqtt_handler.mqtt.Client')
     def test_mqtt_handler_initialization(self, mock_client):
         """Test MQTT handler initialization"""
         mock_client_instance = Mock()
@@ -152,7 +152,7 @@ class TestMQTTHandler(unittest.TestCase):
         self.assertEqual(handler.port, 1883)
         self.assertEqual(handler.client_id, 'test-client')
 
-    @patch('mqtt_handler.mqtt.Client')
+    @patch('src.mqtt_handler.mqtt.Client')
     def test_mqtt_connection(self, mock_client):
         """Test MQTT connection"""
         mock_client_instance = Mock()
@@ -169,7 +169,7 @@ class TestMQTTHandler(unittest.TestCase):
 class TestDockerHandler(unittest.TestCase):
     """Test cases for DockerHandler"""
 
-    @patch('docker_handler.docker.from_env')
+    @patch('src.docker_handler.docker.from_env')
     def test_docker_handler_initialization(self, mock_docker):
         """Test Docker handler initialization"""
         mock_client = Mock()
@@ -180,7 +180,7 @@ class TestDockerHandler(unittest.TestCase):
         
         self.assertIsNotNone(handler.client)
 
-    @patch('docker_handler.docker.from_env')
+    @patch('src.docker_handler.docker.from_env')
     def test_list_containers(self, mock_docker):
         """Test listing containers"""
         mock_client = Mock()
@@ -209,10 +209,10 @@ class TestDockerHandler(unittest.TestCase):
 class TestKubernetesController(unittest.TestCase):
     """Test cases for KubernetesController"""
 
-    @patch('k8s_controller.config.load_kube_config')
-    @patch('k8s_controller.client.CoreV1Api')
-    @patch('k8s_controller.client.AppsV1Api')
-    @patch('k8s_controller.client.NetworkingV1Api')
+    @patch('src.k8s_controller.config.load_kube_config')
+    @patch('src.k8s_controller.client.CoreV1Api')
+    @patch('src.k8s_controller.client.AppsV1Api')
+    @patch('src.k8s_controller.client.NetworkingV1Api')
     def test_k8s_controller_initialization(self, mock_networking, mock_apps, mock_core, mock_config):
         """Test Kubernetes controller initialization"""
         # Mock the API clients
@@ -232,10 +232,10 @@ class TestKubernetesController(unittest.TestCase):
         self.assertIsNotNone(controller.apps_v1)
         self.assertIsNotNone(controller.networking_v1)
 
-    @patch('k8s_controller.config.load_kube_config')
-    @patch('k8s_controller.client.CoreV1Api')
-    @patch('k8s_controller.client.AppsV1Api')
-    @patch('k8s_controller.client.NetworkingV1Api')
+    @patch('src.k8s_controller.config.load_kube_config')
+    @patch('src.k8s_controller.client.CoreV1Api')
+    @patch('src.k8s_controller.client.AppsV1Api')
+    @patch('src.k8s_controller.client.NetworkingV1Api')
     def test_list_namespaces(self, mock_networking, mock_apps, mock_core, mock_config):
         """Test listing namespaces"""
         # Mock the API clients

@@ -71,7 +71,8 @@ class EdgeDeploymentManager:
 
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
-            sys.exit(1)
+            # Re-raise the exception instead of calling sys.exit for better testing
+            raise RuntimeError(f"Failed to initialize services: {e}") from e
 
     def start(self):
         """Start the deployment manager"""
