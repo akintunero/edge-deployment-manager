@@ -106,7 +106,7 @@ class TestEdgeDeploymentManager(unittest.TestCase):
 
     def test_config_file_not_found(self):
         """Test error handling for missing config file"""
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(FileNotFoundError):
             EdgeDeploymentManager("nonexistent_config.yaml")
 
     @patch('src.manager.MQTTHandler')

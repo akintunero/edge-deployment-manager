@@ -58,6 +58,8 @@ class KubernetesController:
                     "status": namespace.status.phase,
                     "created": (
                         namespace.metadata.creation_timestamp.isoformat()
+                        if namespace.metadata.creation_timestamp 
+                        else None
                     ),
                     "labels": namespace.metadata.labels or {},
                 }
