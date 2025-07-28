@@ -89,6 +89,12 @@ venv\Scripts\activate  # On Windows
 
 # Install dependencies
 pip install -r requirements.txt
+
+# For development (includes testing and linting tools)
+pip install -r requirements-dev.txt
+
+# Install the package in development mode
+pip install -e .
 ```
 
 ### 3. **Configuration**
@@ -122,7 +128,10 @@ deployment:
 python3 src/manager.py
 
 # Run tests to verify functionality
-python3 -m pytest tests/ -v
+pytest tests/ -v
+
+# Run tests with coverage
+pytest tests/ --cov=src --cov-report=html
 
 # Check Docker containers
 python3 -c "
@@ -131,6 +140,9 @@ handler = DockerHandler()
 containers = handler.list_containers()
 print(f'Found {len(containers)} containers')
 "
+
+# Use the installed package
+edge-manager --help  # If you added CLI entry point
 ```
 
 ## 📁 Project Structure
@@ -142,16 +154,33 @@ edge-deployment-manager/
 │   ├── mqtt_handler.py    # MQTT communication handler
 │   ├── docker_handler.py  # Docker container operations
 │   ├── k8s_controller.py  # Kubernetes deployment controller
-│   └── __init__.py
+│   └── __init__.py        # Package initialization
+├── tests/                 # Unit tests
+│   ├── test_manager.py   # Comprehensive test suite
+│   └── __init__.py       # Test package initialization
 ├── configs/               # Configuration files
 │   ├── config.yaml       # Main configuration
 │   └── mosquitto.conf    # MQTT broker configuration
-├── tests/                 # Unit tests
-│   └── test_manager.py   # Comprehensive test suite
+├── .github/               # GitHub Actions CI/CD
+│   └── workflows/
+│       └── ci.yml        # Automated testing pipeline
+├── docs/                  # Documentation
+├── examples/              # Usage examples
 ├── logs/                  # Application logs
 ├── requirements.txt       # Python dependencies
+├── requirements-dev.txt   # Development dependencies
+├── setup.py              # Package installation script
+├── pytest.ini           # Test configuration
+├── pyproject.toml        # Modern Python project configuration
+├── Makefile              # Development commands
+├── .pre-commit-config.yaml # Code quality hooks
 ├── Dockerfile            # Container setup
 ├── docker-compose.yml    # Local development setup
+├── AUTHORS.md            # Contributors
+├── CHANGELOG.md          # Version history
+├── CODE_OF_CONDUCT.md    # Community guidelines
+├── CONTRIBUTING.md       # Contribution guidelines
+├── SECURITY.md           # Security policy
 └── README.md             # Project documentation
 ```
 
@@ -227,13 +256,22 @@ Run the comprehensive test suite:
 
 ```bash
 # Run all tests
-python3 -m pytest tests/ -v
+pytest tests/ -v
 
 # Run specific test class
-python3 -m pytest tests/test_manager.py::TestEdgeDeploymentManager -v
+pytest tests/test_manager.py::TestEdgeDeploymentManager -v
 
-# Run with coverage
-python3 -m pytest tests/ --cov=src --cov-report=html
+# Run with coverage report
+pytest tests/ --cov=src --cov-report=html
+
+# Run tests with specific markers
+pytest tests/ -m "not slow" -v
+
+# Run tests in parallel (if pytest-xdist installed)
+pytest tests/ -n auto
+
+# Check test configuration
+cat pytest.ini
 ```
 
 ## 🔍 Monitoring and Logging
@@ -252,6 +290,50 @@ docker ps
 
 # Monitor Kubernetes resources
 kubectl get pods -A
+```
+
+## 🚀 CI/CD Integration
+
+The project includes automated testing and deployment:
+
+### GitHub Actions Workflow
+
+```yaml
+# .github/workflows/ci.yml
+name: CI Pipeline
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+    - name: Run Tests
+      run: pytest tests/ -v
+    - name: Lint Code
+      run: flake8 src/
+```
+
+### Pre-commit Hooks
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+
+# Run hooks manually
+pre-commit run --all-files
+
+# Update hook versions
+pre-commit autoupdate
 ```
 
 ## 🚀 Deployment Examples
@@ -325,11 +407,37 @@ We welcome contributions! Please follow these steps:
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Run the test suite: `python3 -m pytest tests/ -v`
-5. Commit your changes: `git commit -m "feat: add amazing feature"`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
+3. Set up development environment:
+   ```bash
+   pip install -r requirements-dev.txt
+   pip install -e .
+   pre-commit install  # Install pre-commit hooks
+   ```
+4. Make your changes and add tests
+5. Run the test suite: `pytest tests/ -v`
+6. Check code quality: `make lint` or `pre-commit run --all-files`
+7. Commit your changes: `git commit -m "feat: add amazing feature"`
+8. Push to the branch: `git push origin feature/amazing-feature`
+9. Open a Pull Request
+
+### Development Commands
+
+```bash
+# Install development dependencies
+make install-dev
+
+# Run tests with coverage
+make test
+
+# Run linting and formatting
+make lint
+
+# Build documentation
+make docs
+
+# Clean up build artifacts
+make clean
+```
 
 ## 📄 License
 
@@ -342,6 +450,16 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **Discussions**: Join the conversation on [GitHub Discussions](https://github.com/akintunero/edge-deployment-manager/discussions)
 
 ## 🔄 Recent Improvements
+
+### Version 2.1.0 - CI/CD and Package Structure
+- ✅ **Fixed CI/CD pipeline** - Resolved import errors and test mocking
+- ✅ **Added proper Python package structure** - setup.py, __init__.py files
+- ✅ **Enhanced testing framework** - pytest.ini configuration, better mocking
+- ✅ **Improved development workflow** - requirements-dev.txt, pre-commit hooks
+- ✅ **Professional project structure** - Makefile, pyproject.toml, comprehensive docs
+- ✅ **Better error handling** - RuntimeError instead of sys.exit() for testing
+- ✅ **GitHub Actions integration** - Automated testing on push/PR
+- ✅ **Development mode installation** - pip install -e . support
 
 ### Version 2.0.0 - Major Refactor
 - ✅ **Fixed MQTT client compatibility** with MQTT v3.1.1
