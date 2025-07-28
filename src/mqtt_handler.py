@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 import logging
 import threading
 import time
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class MQTTHandler:
         self.client = mqtt.Client(
             client_id=self.client_id,
             clean_session=True,
-            protocol=mqtt.MQTTv311
+            protocol=mqtt.MQTTv311,
         )
 
         # Set callbacks
@@ -61,15 +61,17 @@ class MQTTHandler:
             logger.info(f"Connected to MQTT broker: {self.broker}:{self.port}")
             self._subscribe_to_topics()
         else:
-            logger.error("Failed to connect to MQTT broker. "
-                        f"Return code: {rc}")
+            logger.error(
+                "Failed to connect to MQTT broker. " f"Return code: {rc}"
+            )
 
     def _on_disconnect(self, client, userdata, rc):
         """Callback for when client disconnects from broker"""
         self.connected = False
         if rc != 0:
-            disconnect_msg = ("Unexpected disconnection from MQTT broker "
-                            f"with code: {rc}")
+            disconnect_msg = (
+                "Unexpected disconnection from MQTT broker " f"with code: {rc}"
+            )
             logger.warning(disconnect_msg)
         else:
             logger.info("Disconnected from MQTT broker")
@@ -78,7 +80,7 @@ class MQTTHandler:
         """Callback for when a message is received"""
         try:
             topic = msg.topic
-            message = msg.payload.decode('utf-8')
+            message = msg.payload.decode("utf-8")
 
             logger.info(f"Received message on topic '{topic}': {message}")
 
@@ -106,7 +108,7 @@ class MQTTHandler:
             ("edge/deployments", 1),
             ("edge/status", 1),
             ("edge/commands", 1),
-            ("edge/logs", 0)
+            ("edge/logs", 0),
         ]
 
         for topic, qos in default_topics:
@@ -128,7 +130,8 @@ class MQTTHandler:
 
             # Start connection in a separate thread
             self.connection_thread = threading.Thread(
-                target=self._network_loop, daemon=True)
+                target=self._network_loop, daemon=True
+            )
             self.connection_thread.start()
 
             # Wait for connection
@@ -176,8 +179,9 @@ class MQTTHandler:
         except Exception as e:
             logger.error(f"Error in MQTT network loop: {e}")
 
-    def publish(self, topic: str, message: str, qos: int = 1,
-                retain: bool = False):
+    def publish(
+        self, topic: str, message: str, qos: int = 1, retain: bool = False
+    ):
         """Publish a message to a topic"""
         try:
             if not self.connected:
@@ -185,7 +189,8 @@ class MQTTHandler:
                 return
 
             result = self.client.publish(
-                topic, message, qos=qos, retain=retain)
+                topic, message, qos=qos, retain=retain
+            )
 
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 logger.info(f"Published message to '{topic}': {message}")
@@ -252,5 +257,5 @@ class MQTTHandler:
             "broker": self.broker,
             "port": self.port,
             "client_id": self.client_id,
-            "running": self.running
+            "running": self.running,
         }

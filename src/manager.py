@@ -11,21 +11,20 @@ import sys
 import yaml
 import logging
 import threading
-from pathlib import Path
 from typing import Dict, Any, Optional
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-logger = logging.getLogger(__name__)
 
 # Import handlers
 from .mqtt_handler import MQTTHandler
 from .docker_handler import DockerHandler
 from .k8s_controller import KubernetesController
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 class EdgeDeploymentManager:
@@ -44,7 +43,7 @@ class EdgeDeploymentManager:
     def load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file"""
         try:
-            with open(self.config_path, 'r') as file:
+            with open(self.config_path, "r") as file:
                 config = yaml.safe_load(file)
                 logger.info(f"Configuration loaded from {self.config_path}")
                 return config
@@ -125,8 +124,10 @@ class EdgeDeploymentManager:
             deployment_type = app_config.get("type", "docker")
             app_name = app_config.get("name", "unknown")
 
-            logger.info(f"Deploying application: {app_name} "
-                       f"(type: {deployment_type})")
+            logger.info(
+                f"Deploying application: {app_name} "
+                f"(type: {deployment_type})"
+            )
 
             if deployment_type == "docker":
                 return self._deploy_docker_app(app_config)
@@ -158,7 +159,7 @@ class EdgeDeploymentManager:
                         "type": "deployment",
                         "status": "success",
                         "container_id": container_id,
-                        "application": app_config.get("name")
+                        "application": app_config.get("name"),
                     }
                     self.mqtt_handler.publish("edge/deployments", str(message))
 
@@ -182,12 +183,14 @@ class EdgeDeploymentManager:
             namespace = app_config.get("namespace", "default")
 
             if not yaml_file:
-                logger.error("No YAML file specified for Kubernetes "
-                           "deployment")
+                logger.error(
+                    "No YAML file specified for Kubernetes " "deployment"
+                )
                 return False
 
-            success = self.k8s_controller.deploy_from_yaml(yaml_file,
-                                                         namespace)
+            success = self.k8s_controller.deploy_from_yaml(
+                yaml_file, namespace
+            )
 
             if success:
                 logger.info("Kubernetes application deployed successfully")
@@ -199,7 +202,7 @@ class EdgeDeploymentManager:
                         "status": "success",
                         "platform": "kubernetes",
                         "namespace": namespace,
-                        "application": app_config.get("name")
+                        "application": app_config.get("name"),
                     }
                     self.mqtt_handler.publish("edge/deployments", str(message))
 
