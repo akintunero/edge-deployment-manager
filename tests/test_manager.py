@@ -12,12 +12,39 @@ from pathlib import Path
 
 # Import the modules to test
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+import os
 
-from src.manager import EdgeDeploymentManager
-from src.mqtt_handler import MQTTHandler
-from src.docker_handler import DockerHandler
-from src.k8s_controller import KubernetesController
+# Add project root and src to path for compatibility
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src_path = os.path.join(project_root, 'src')
+sys.path.insert(0, project_root)
+sys.path.insert(0, src_path)
+
+# Import the classes - try multiple import paths for flexibility
+try:
+    # Try importing from installed package
+    from src.manager import EdgeDeploymentManager
+    from src.mqtt_handler import MQTTHandler
+    from src.docker_handler import DockerHandler
+    from src.k8s_controller import KubernetesController
+except ImportError:
+    try:
+        # Fallback: try direct import from src module
+        import src.manager as manager_module
+        import src.mqtt_handler as mqtt_module
+        import src.docker_handler as docker_module
+        import src.k8s_controller as k8s_module
+        
+        EdgeDeploymentManager = manager_module.EdgeDeploymentManager
+        MQTTHandler = mqtt_module.MQTTHandler
+        DockerHandler = docker_module.DockerHandler
+        KubernetesController = k8s_module.KubernetesController
+    except ImportError:
+        # Final fallback: direct import from current working directory
+        from manager import EdgeDeploymentManager
+        from mqtt_handler import MQTTHandler
+        from docker_handler import DockerHandler
+        from k8s_controller import KubernetesController
 
 
 class TestEdgeDeploymentManager(unittest.TestCase):
