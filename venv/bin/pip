@@ -1,4 +1,4 @@
-#!/Users/oakinkuehinmi/Documents/DevSecOps/devops/edge-deployment-manager/venv/bin/python3
+#!/Users/oakinkuehinmi/Documents/git/edge-deployment-manager/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys

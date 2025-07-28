@@ -1,3 +1,42 @@
+# Edge Deployment Manager Configuration
+
 mqtt:
   broker: "localhost"
   port: 1883
+  keepalive: 60
+  client_id: "edge-deployment-manager"
+  topics:
+    deployments: "edge/deployments"
+    status: "edge/status"
+    commands: "edge/commands"
+    logs: "edge/logs"
+
+docker:
+  socket: "/var/run/docker.sock"
+  timeout: 30
+  registry:
+    url: "docker.io"
+    username: ""
+    password: ""
+
+kubernetes:
+  config_file: "~/.kube/config"
+  context: ""
+  namespace: "default"
+  timeout: 30
+
+deployment:
+  default_namespace: "edge-apps"
+  health_check_interval: 30
+  retry_attempts: 3
+  timeout: 300
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/edge-manager.log"
+
+monitoring:
+  enabled: true
+  metrics_port: 8080
+  health_check_endpoint: "/health"

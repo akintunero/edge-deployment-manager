@@ -1,0 +1,36 @@
+# Development dependencies for Edge Deployment Manager
+# Install with: pip install -r requirements-dev.txt
+
+# Testing
+pytest>=8.4.1
+pytest-cov>=6.2.1
+pytest-mock>=3.12.0
+pytest-asyncio>=0.23.0
+
+# Code Quality
+flake8>=7.3.0
+black>=25.0.0
+isort>=5.13.0
+mypy>=1.8.0
+
+# Documentation
+sphinx>=7.2.0
+sphinx-rtd-theme>=2.0.0
+myst-parser>=2.0.0
+
+# Type Checking
+types-requests>=2.31.0
+types-PyYAML>=6.0.0
+
+# Development Tools
+pre-commit>=3.6.0
+tox>=4.11.0
+coverage>=7.4.0
+
+# Security
+bandit>=1.7.5
+safety>=2.3.0
+
+# Performance
+pytest-benchmark>=4.0.0
+memory-profiler>=0.61.0 
