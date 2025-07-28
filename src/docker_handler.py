@@ -6,39 +6,44 @@ Handles Docker container operations for edge deployments
 
 import docker
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Dict, List, Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class DockerHandler:
-    """Handles Docker container operations for edge deployments"""
+    """Handle Docker container operations"""
 
     def __init__(self):
+        """Initialize Docker client"""
         try:
             self.client = docker.from_env()
-            self.client.ping()  # Test connection
             logger.info("Docker client initialized successfully")
         except docker.errors.DockerException as e:
             logger.error(f"Failed to initialize Docker client: {e}")
-            raise
+            self.client = None
         except Exception as e:
             logger.error(f"Unexpected error initializing Docker client: {e}")
             raise
 
-    def list_containers(self, all_containers: bool = False) -> List[Dict[str, Any]]:
+    def list_containers(self, all_containers: bool = False) -> \
+            List[Dict[str, Any]]:
         """List all containers"""
         try:
             containers = self.client.containers.list(all=all_containers)
             container_list = []
 
             for container in containers:
+                image_tag = (
+                    container.image.tags[0] 
+                    if container.image.tags 
+                    else container.image.id
+                )
                 container_info = {
                     "id": container.id,
                     "name": container.name,
                     "status": container.status,
-                    "image": container.image.tags[0] if container.image.tags else container.image.id,
+                    "image": image_tag,
                     "created": container.attrs["Created"],
                     "ports": container.attrs["NetworkSettings"]["Ports"],
                 }
@@ -47,174 +52,196 @@ class DockerHandler:
             logger.info(f"Found {len(container_list)} containers")
             return container_list
 
-        except Exception as e:
+        except docker.errors.DockerException as e:
             logger.error(f"Error listing containers: {e}")
             return []
-
-    def list_images(self) -> List[Dict[str, Any]]:
-        """List all Docker images"""
-        try:
-            images = self.client.images.list()
-            image_list = []
-
-            for image in images:
-                image_info = {
-                    "id": image.id,
-                    "tags": image.tags,
-                    "size": image.attrs["Size"],
-                    "created": image.attrs["Created"],
-                }
-                image_list.append(image_info)
-
-            logger.info(f"Found {len(image_list)} images")
-            return image_list
-
         except Exception as e:
-            logger.error(f"Error listing images: {e}")
+            logger.error(f"Unexpected error listing containers: {e}")
             return []
+
+    def get_container(self, container_id: str):
+        """Get container by ID or name"""
+        try:
+            return self.client.containers.get(container_id)
+        except docker.errors.NotFound:
+            logger.error(f"Container {container_id} not found")
+            return None
+        except docker.errors.DockerException as e:
+            logger.error(f"Error getting container {container_id}: {e}")
+            return None
+        except Exception as e:
+            error_msg = f"Unexpected error getting {container_id}: {e}"
+            logger.error(error_msg)
+            return None
 
     def deploy_container(self, config: Dict[str, Any]) -> Optional[str]:
         """Deploy a container based on configuration"""
         try:
-            logger.info(f"Deploying container: {config.get('name', 'unknown')}")
+            name = config.get('name', 'unknown')
+            logger.info(f"Deploying container: {name}")
 
             # Extract configuration
-            image = config.get("image")
-            name = config.get("name")
-            ports = config.get("ports", {})
-            environment = config.get("environment", {})
-            volumes = config.get("volumes", {})
-            restart_policy = config.get("restart_policy", "unless-stopped")
-
+            image = config.get('image')
             if not image:
-                logger.error("No image specified in deployment config")
+                logger.error("No image specified in configuration")
                 return None
 
-            # Create container
+            ports = config.get('ports', {})
+            environment = config.get('environment', {})
+            volumes = config.get('volumes', {})
+            command = config.get('command')
+            working_dir = config.get('working_dir')
+            restart_policy = config.get(
+                'restart_policy', 
+                {'Name': 'unless-stopped'}
+            )
+
+            # Deploy container
             container = self.client.containers.run(
                 image=image,
-                name=name,
+                name=config.get('name'),
                 ports=ports,
                 environment=environment,
                 volumes=volumes,
-                restart_policy={"Name": restart_policy},
+                command=command,
+                working_dir=working_dir,
+                restart_policy=restart_policy,
                 detach=True,
+                remove=config.get('remove', False)
             )
 
-            logger.info(f"Container deployed successfully: {container.id}")
+            logger.info(f"Container {container.id} deployed successfully")
             return container.id
 
-        except docker.errors.ImageNotFound:
-            logger.error(f"Docker image not found: {config.get('image')}")
+        except docker.errors.ImageNotFound as e:
+            logger.error(f"Image not found: {e}")
             return None
-        except docker.errors.APIError as e:
-            logger.error(f"Docker API error during deployment: {e}")
+        except docker.errors.ContainerError as e:
+            logger.error(f"Container error: {e}")
+            return None
+        except docker.errors.DockerException as e:
+            logger.error(f"Docker error deploying container: {e}")
             return None
         except Exception as e:
-            logger.error(f"Error deploying container: {e}")
+            logger.error(f"Unexpected error deploying container: {e}")
             return None
 
     def stop_container(self, container_id: str) -> bool:
-        """Stop a running container"""
+        """Stop a container"""
         try:
-            container = self.client.containers.get(container_id)
-            container.stop()
-            logger.info(f"Container stopped: {container_id}")
-            return True
-        except docker.errors.NotFound:
-            logger.error(f"Container not found: {container_id}")
+            container = self.get_container(container_id)
+            if container:
+                container.stop()
+                logger.info(f"Container {container_id} stopped")
+                return True
             return False
-        except Exception as e:
+        except docker.errors.DockerException as e:
             logger.error(f"Error stopping container {container_id}: {e}")
             return False
+        except Exception as e:
+            error_msg = f"Error stopping container {container_id}: {e}"
+            logger.error(error_msg)
+            return False
 
-    def remove_container(self, container_id: str, force: bool = False) -> bool:
+    def remove_container(self, container_id: str) -> bool:
         """Remove a container"""
         try:
-            container = self.client.containers.get(container_id)
-            container.remove(force=force)
-            logger.info(f"Container removed: {container_id}")
-            return True
-        except docker.errors.NotFound:
-            logger.error(f"Container not found: {container_id}")
+            container = self.get_container(container_id)
+            if container:
+                container.remove(force=True)
+                logger.info(f"Container {container_id} removed")
+                return True
             return False
-        except Exception as e:
+        except docker.errors.DockerException as e:
             logger.error(f"Error removing container {container_id}: {e}")
             return False
+        except Exception as e:
+            error_msg = f"Error removing container {container_id}: {e}"
+            logger.error(error_msg)
+            return False
 
-    def get_container_logs(self, container_id: str, tail: int = 100) -> str:
+    def get_container_logs(self, container_id: str) -> str:
         """Get container logs"""
         try:
-            container = self.client.containers.get(container_id)
-            logs = container.logs(tail=tail, timestamps=True).decode("utf-8")
-            return logs
-        except docker.errors.NotFound:
-            logger.error(f"Container not found: {container_id}")
+            container = self.get_container(container_id)
+            if container:
+                return container.logs().decode('utf-8')
             return ""
-        except Exception as e:
-            logger.error(f"Error getting logs for container {container_id}: {e}")
+        except docker.errors.DockerException as e:
+            error_msg = f"Error getting logs for container {container_id}: {e}"
+            logger.error(error_msg)
             return ""
 
-    def get_container_stats(self, container_id: str) -> Optional[Dict[str, Any]]:
-        """Get container statistics"""
+    def get_container_stats(self, container_id: str) -> \
+            Optional[Dict[str, Any]]:
+        """Get container resource usage statistics"""
         try:
-            container = self.client.containers.get(container_id)
-            stats = container.stats(stream=False)
+            container = self.get_container(container_id)
+            if not container:
+                return None
 
-            # Extract relevant stats
+            stats = container.stats(stream=False)
             cpu_stats = stats.get("cpu_stats", {})
             memory_stats = stats.get("memory_stats", {})
 
-            container_stats = {
-                "container_id": container_id,
-                "timestamp": datetime.now().isoformat(),
-                "cpu_usage": cpu_stats.get("cpu_usage", {}).get("total_usage", 0),
+            networks = stats.get("networks", {})
+            eth0_stats = networks.get("eth0", {})
+
+            return {
+                "cpu_usage": cpu_stats.get("cpu_usage", {}).get(
+                    "total_usage", 0),
                 "memory_usage": memory_stats.get("usage", 0),
                 "memory_limit": memory_stats.get("limit", 0),
-                "network_rx": stats.get("networks", {}).get("eth0", {}).get("rx_bytes", 0),
-                "network_tx": stats.get("networks", {}).get("eth0", {}).get("tx_bytes", 0),
+                "network_rx": eth0_stats.get("rx_bytes", 0),
+                "network_tx": eth0_stats.get("tx_bytes", 0),
+                "timestamp": stats.get("read", "")
             }
 
-            return container_stats
-
-        except docker.errors.NotFound:
-            logger.error(f"Container not found: {container_id}")
+        except docker.errors.DockerException as e:
+            error_msg = (
+                f"Unexpected error getting stats for "
+                f"{container_id}: {e}"
+            )
+            logger.error(error_msg)
             return None
         except Exception as e:
-            logger.error(f"Error getting stats for container {container_id}: {e}")
+            error_msg = f"Unexpected error getting stats for container {container_id}: {e}"
+            logger.error(error_msg)
             return None
 
-    def pull_image(self, image_name: str, tag: str = "latest") -> bool:
-        """Pull a Docker image"""
+    def pull_image(self, image: str) -> bool:
+        """Pull an image from registry"""
         try:
-            logger.info(f"Pulling image: {image_name}:{tag}")
-            self.client.images.pull(image_name, tag=tag)
-            logger.info(f"Successfully pulled image: {image_name}:{tag}")
+            self.client.images.pull(image)
+            logger.info(f"Image {image} pulled successfully")
             return True
-        except Exception as e:
-            logger.error(f"Error pulling image {image_name}:{tag}: {e}")
+        except docker.errors.DockerException as e:
+            logger.error(f"Error pulling image {image}: {e}")
             return False
 
-    def build_image(self, path: str, tag: str, dockerfile: str = "Dockerfile") -> Optional[str]:
-        """Build a Docker image"""
+    def build_image(self, path: str, tag: str, 
+                   dockerfile: str = "Dockerfile") -> Optional[str]:
+        """Build an image from Dockerfile"""
         try:
-            logger.info(f"Building image from {path} with tag: {tag}")
+            logger.info(f"Building image {tag} from {path}")
+            image, logs = self.client.images.build(
+                path=path, tag=tag, dockerfile=dockerfile, decode=True
+            )
 
-            image, logs = self.client.images.build(path=path, tag=tag, dockerfile=dockerfile, decode=True)
+            # Log build output
+            for log in logs:
+                if 'stream' in log:
+                    logger.info(log['stream'].strip())
 
-            logger.info(f"Successfully built image: {image.id}")
+            logger.info(f"Image {tag} built successfully")
             return image.id
 
-        except Exception as e:
-            logger.error(f"Error building image: {e}")
+        except docker.errors.BuildError as e:
+            logger.error(f"Error building image {tag}: {e}")
             return None
-
-    def health_check(self) -> bool:
-        """Perform health check on Docker daemon"""
-        try:
-            self.client.ping()
-            logger.debug("Docker daemon health check passed")
-            return True
+        except docker.errors.DockerException as e:
+            logger.error(f"Docker error building image {tag}: {e}")
+            return None
         except Exception as e:
-            logger.error(f"Docker daemon health check failed: {e}")
-            return False
+            logger.error(f"Unexpected error building image {tag}: {e}")
+            return None

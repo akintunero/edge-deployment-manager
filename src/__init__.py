@@ -4,7 +4,7 @@ Edge Deployment Manager
 
 A comprehensive edge deployment management system with support for:
 - Docker container deployment
-- Kubernetes orchestration  
+- Kubernetes orchestration
 - MQTT communication
 - IoT edge device management
 
@@ -26,7 +26,7 @@ from .mqtt_handler import MQTTHandler
 
 __all__ = [
     'EdgeDeploymentManager',
-    'DockerHandler', 
+    'DockerHandler',
     'KubernetesController',
     'MQTTHandler'
 ]
