@@ -29,7 +29,7 @@ When you contribute to the project, you can add your name to this file by:
 Example format:
 ```markdown
 ### Your Name
-- **Email**: [your.email@example.com](mailto:your.email@example.com)
+- **Email**: [akintunero101@gmail.com](mailto:akintunero101@gmail.com)
 - **GitHub**: [@yourusername](https://github.com/yourusername)
 - **Role**: Contributor
 - **Contributions**: Brief description of your contributions
