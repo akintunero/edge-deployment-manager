@@ -29,7 +29,7 @@ coverage>=7.4.0
 
 # Security
 bandit>=1.7.5
-safety>=2.3.0
+pip-audit>=2.7.0
 
 # Performance
 pytest-benchmark>=4.0.0

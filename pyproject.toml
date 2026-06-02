@@ -61,7 +61,7 @@ dev = [
     "tox>=4.11.0",
     "coverage>=7.4.0",
     "bandit>=1.7.5",
-    "safety>=2.3.0",
+    "pip-audit>=2.7.0",
     "types-requests>=2.31.0",
     "types-PyYAML>=6.0.0",
 ]
@@ -182,6 +182,3 @@ exclude_lines = [
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = ["B101", "B601"]
-
-[tool.safety]
-output = "json" 
