@@ -111,8 +111,7 @@ class SqliteDeviceRegistry:
 
     def _init_db(self) -> None:
         with self._connect() as connection:
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS devices (
                     device_id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -120,8 +119,7 @@ class SqliteDeviceRegistry:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
-                """
-            )
+                """)
             connection.commit()
 
     @staticmethod

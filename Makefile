@@ -68,7 +68,7 @@ type-check:
 
 security:
 	bandit -r src/ -f json -o bandit-report.json
-	safety check
+	safety scan
 
 # Development
 clean:
@@ -127,7 +127,7 @@ ci-typecheck:
 
 ci-security:
 	bandit -r src/ -f json -o bandit-report.json
-	safety check
+	safety scan
 
 # Development helpers
 setup-dev:

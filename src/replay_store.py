@@ -73,16 +73,14 @@ class SqliteReplayStore(ReplayStore):
 
     def _init_db(self) -> None:
         with self._connect() as connection:
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS command_nonces (
                     issuer TEXT NOT NULL,
                     nonce TEXT NOT NULL,
                     expires_at REAL NOT NULL,
                     PRIMARY KEY (issuer, nonce)
                 )
-                """
-            )
+                """)
             connection.execute(
                 ("CREATE INDEX IF NOT EXISTS idx_command_nonces_expires " "ON command_nonces (expires_at)")
             )
