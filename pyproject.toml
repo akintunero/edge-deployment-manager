@@ -139,6 +139,8 @@ module = [
     "paho.mqtt.*",
     "psycopg",
     "psycopg.*",
+    "redis",
+    "redis.*",
 ]
 ignore_missing_imports = true
 
