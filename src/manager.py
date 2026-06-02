@@ -85,7 +85,7 @@ class EdgeDeploymentManager:
 
         monitoring = self.config.get("monitoring", {})
         if monitoring.get("enabled", False):
-            host = monitoring.get("host", "0.0.0.0")
+            host = monitoring.get("host", "127.0.0.1")
             port = int(monitoring.get("port", 9090))
             self.health_server = HealthServer(host, port, self.readiness)
             self.health_server.start()

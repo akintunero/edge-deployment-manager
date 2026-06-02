@@ -244,8 +244,8 @@ class MQTTHandler:
         if self._loop_started:
             try:
                 self.client.loop_stop()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("MQTT loop_stop failed during shutdown: %s", exc)
             self._loop_started = False
 
     def publish(self, topic: str, message: str, qos: int = 1, retain: bool = False) -> None:
