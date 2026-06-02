@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-control-plane
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  replicas: {{ if .Values.ha.enabled }}2{{ else }}{{ .Values.controlPlane.replicaCount }}{{ end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: control-plane
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: control-plane
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: control-plane
+          image: "{{ .Values.controlPlane.image.repository }}:{{ .Values.controlPlane.image.tag }}"
+          imagePullPolicy: {{ .Values.controlPlane.image.pullPolicy }}
+          command:
+            - edge-control-plane
+            - --config
+            - {{ .Values.controlPlane.configPath }}
+          ports:
+            - name: https
+              containerPort: {{ .Values.controlPlane.service.port }}
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if .Values.postgres.enabled }}
+            - name: CONTROL_PLANE_DATABASE_URL
+              value: {{ printf "postgresql://%s:%s@%s-postgres:5432/%s" .Values.postgres.auth.username .Values.postgres.auth.password (include "edge-stack.fullname" .) .Values.postgres.auth.database | quote }}
+            {{- end }}
+          envFrom:
+            {{- if .Values.controlPlane.existingSecret }}
+            - secretRef:
+                name: {{ .Values.controlPlane.existingSecret }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/edge
+            - name: config
+              mountPath: /etc/edge
+              readOnly: true
+            {{- if .Values.controlPlane.mqttTlsSecret }}
+            - name: mqtt-tls
+              mountPath: /etc/edge/mqtt
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "edge-stack.fullname" . }}-control-plane
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "edge-stack.fullname" . }}-data
+        {{- else }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.controlPlane.mqttTlsSecret }}
+        - name: mqtt-tls
+          secret:
+            secretName: {{ .Values.controlPlane.mqttTlsSecret }}
+        {{- end }}

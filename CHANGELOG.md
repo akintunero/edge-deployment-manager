@@ -8,31 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive test suite with 10 unit tests
-- Enhanced error handling throughout all components
-- Modern MQTT client with v3.1.1 protocol support
-- Docker container lifecycle management
-- Kubernetes deployment controller with multi-resource support
-- Thread-safe operations for concurrent deployments
-- Health checks for all services
-- Comprehensive logging with configurable levels
-- YAML-based configuration management
-- Code quality tools (flake8, black)
-- Open-source documentation (CONTRIBUTING.md, CODE_OF_CONDUCT.md)
+- Control plane with signed MQTT command issuance, device registry, and audit log
+- Edge agent with Docker/Kubernetes deploy actions, health/metrics endpoints, MQTT reconnect
+- Security: Ed25519 signed commands, mTLS bootstrap, durable replay store (SQLite/Redis), API rate limits, cert rotation
+- HA: PostgreSQL registry, leader election, `docker-compose.ha.yml` (`make ha-up`)
+- Production stack: `make prod-up`, `scripts/setup_dev.py`, `scripts/e2e_stack_test.py`, E2E CI workflow
+- Helm chart `deploy/helm/edge-stack` (Postgres, Mosquitto, control plane, edge agent)
+- `SecretProvider`, Dependabot, issue/PR templates, release workflow, committed lock files
+- Docs: architecture, production quickstart, security/HA guides; README rewrite
 
 ### Changed
-- Refactored entire codebase for modular architecture
-- Updated MQTT client to use modern API
-- Enhanced configuration structure with comprehensive settings
-- Improved error handling and graceful degradation
-- Updated dependencies with version constraints
-
-### Fixed
-- MQTT client compatibility issues
-- Import path problems
-- Code formatting and linting issues
-- Configuration loading errors
-- Docker and Kubernetes connection issues
+- Kubernetes manifests apply via dynamic client (create-or-replace)
+- CI: lint, security scan, mypy (3.12), tests, Codecov artifact
+- Local prod Compose uses SQLite registry; HA Compose uses PostgreSQL
 
 ## [2.0.0] - 2025-07-27
 
@@ -42,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker Handler**: Full container lifecycle management
 - **Kubernetes Controller**: Multi-resource deployment support
 - **Edge Deployment Manager**: Main orchestration component
-- **Comprehensive Testing**: 10 unit tests with 100% coverage
+- **Testing**: Initial pytest suite (superseded by expanded coverage in later releases)
 - **Error Handling**: Graceful error recovery throughout
 - **Logging**: Configurable logging with multiple levels
 - **Configuration**: Enhanced YAML-based configuration
@@ -85,40 +73,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **v2.0.0**: Major refactor with production-ready features
 - **v1.0.0**: Initial release with basic functionality
 
-## Migration Guide
-
-### From v1.0.0 to v2.0.0
-
-1. **Update Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Update Configuration**
-   - The configuration structure has been enhanced
-   - Review `configs/config.yaml` for new options
-
-3. **Code Changes**
-   - MQTT client API has been updated
-   - Error handling is now more robust
-   - Logging configuration has changed
-
-4. **Testing**
-   - Run the test suite to verify functionality
-   ```bash
-   python3 -m pytest tests/ -v
-   ```
-
 ## Contributing
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
-
-## Contact
-
-- **Maintainer**: Olúmáyòwá Akinkuehinmi
-- **Email**: [akintunero101@gmail.com](mailto:akintunero101@gmail.com)
-- **GitHub**: [@akintunero](https://github.com/akintunero)
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,63 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: edge-mosquitto
+    restart: unless-stopped
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./certs:/mosquitto/certs:ro
+      - ./configs/mosquitto.tls.conf:/mosquitto/config/mosquitto.conf:ro
+
+  control-plane:
+    container_name: edge-control-plane
+    build: .
+    command:
+      [
+        "python",
+        "-m",
+        "src.control_plane.main",
+        "--config",
+        "runtime/control-plane.yaml",
+      ]
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./data:/app/data
+      - ./runtime/control-plane.yaml:/app/runtime/control-plane.yaml:ro
+    depends_on:
+      - mosquitto
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import ssl,urllib.request; c=ssl.create_default_context(); c.check_hostname=False; c.verify_mode=ssl.CERT_NONE; urllib.request.urlopen('https://127.0.0.1:8080/health', context=c)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  edge-agent:
+    container_name: edge-agent
+    build: .
+    command: ["python", "-m", "src.manager", "--config", "runtime/agent-config.yaml"]
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    env_file:
+      - .env
+    volumes:
+      - ./runtime/agent-credentials:/etc/edge:ro
+      - ./runtime/agent-config.yaml:/app/runtime/agent-config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      mosquitto:
+        condition: service_started
+      control-plane:
+        condition: service_healthy

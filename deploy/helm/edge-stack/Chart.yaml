@@ -1,0 +1,13 @@
+apiVersion: v2
+name: edge-stack
+description: Edge deployment control plane for MQTT-driven edge agents
+type: application
+version: 0.1.0
+appVersion: "2.0.0"
+keywords:
+  - edge
+  - mqtt
+  - devops
+maintainers:
+  - name: Olúmáyòwá Akinkuehinmi
+    email: akintunero101@gmail.com

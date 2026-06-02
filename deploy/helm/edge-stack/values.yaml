@@ -1,0 +1,58 @@
+controlPlane:
+  replicaCount: 1
+  image:
+    repository: edge-deployment-manager
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  existingSecret: edge-control-plane-secrets
+  mqttTlsSecret: edge-mqtt-tls
+  configPath: /etc/edge/control-plane.yaml
+
+registry:
+  backend: postgres
+
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  auth:
+    username: edge
+    password: edge
+    database: edge_control_plane
+  persistence:
+    enabled: true
+    size: 5Gi
+
+ha:
+  enabled: true
+  leaderLockKey: 84001
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+
+mosquitto:
+  enabled: true
+  image: eclipse-mosquitto:2
+  service:
+    port: 8883
+  tls:
+    existingSecret: edge-mqtt-tls
+
+edgeAgent:
+  enabled: true
+  deviceId: edge-agent-001
+  image:
+    repository: edge-deployment-manager
+    tag: latest
+    pullPolicy: IfNotPresent
+  credentialsSecret: edge-agent-credentials
+  signingPublicKeyHex: REPLACE_WITH_ED25519_PUBLIC_KEY_HEX
+  docker:
+    enabled: true
+    socketPath: /var/run/docker.sock
+  redis:
+    url: ""

@@ -1,0 +1,11 @@
+{
+  "action": "deploy",
+  "params": {
+    "type": "docker",
+    "name": "nginx-edge-demo",
+    "image": "nginx:alpine",
+    "ports": {
+      "80/tcp": 8088
+    }
+  }
+}

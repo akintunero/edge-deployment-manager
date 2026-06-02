@@ -2,9 +2,14 @@
 
 mqtt:
   broker: "localhost"
-  port: 1883
+  port: 8883
   keepalive: 60
   client_id: "edge-deployment-manager"
+  tls:
+    enabled: true
+    ca_cert: "/etc/edge/ca.crt"
+    cert_file: "/etc/edge/agent.crt"
+    key_file: "/etc/edge/agent.key"
   topics:
     deployments: "edge/deployments"
     status: "edge/status"
@@ -30,6 +35,8 @@ deployment:
   health_check_interval: 30
   retry_attempts: 3
   timeout: 300
+  enable_docker: true
+  enable_kubernetes: false
 
 logging:
   level: "INFO"
@@ -37,6 +44,31 @@ logging:
   file: "logs/edge-manager.log"
 
 monitoring:
-  enabled: true
-  metrics_port: 8080
-  health_check_endpoint: "/health"
+  enabled: false
+  host: "0.0.0.0"
+  port: 9090
+  require_mqtt: true
+
+# Signed command verification (required for production / hostile networks).
+# Generate an Ed25519 keypair for the control plane and register the public key here.
+security:
+  device_id: "edge-agent-001"
+  require_signed_commands: true
+  max_clock_skew_seconds: 300
+  nonce_ttl_seconds: 900
+  replay_store:
+    type: sqlite
+    path: data/replay-nonces.db
+  trusted_signers:
+    - issuer: "control-plane"
+      public_key_hex: "REPLACE_WITH_ED25519_PUBLIC_KEY_HEX"
+  policy:
+    allowed_actions:
+      - deploy
+    allowed_deployment_types:
+      - docker
+      - kubernetes
+    allowed_images:
+      - "nginx:*"
+    allowed_yaml_roots:
+      - "/opt/edge/manifests"

@@ -4,20 +4,24 @@ Kubernetes Controller for Edge Deployment Manager
 Handles Kubernetes deployment operations for edge clusters
 """
 
-import yaml
 import logging
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List, Optional
+
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
+from .k8s_manifest import apply_manifests_from_file
+
 logger = logging.getLogger(__name__)
+
+_SUPPORTED_MANIFEST_KINDS = ("Deployment", "Service", "ConfigMap", "Secret")
 
 
 class KubernetesController:
     """Handle Kubernetes cluster operations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Kubernetes client"""
         try:
             # Try to load configuration
@@ -29,10 +33,10 @@ class KubernetesController:
                 config.load_incluster_config()
                 logger.info("Loaded in-cluster configuration")
 
-            # Initialize API clients
-            self.core_v1 = client.CoreV1Api()
-            self.apps_v1 = client.AppsV1Api()
-            self.networking_v1 = client.NetworkingV1Api()
+            self._api_client = client.ApiClient()
+            self.core_v1 = client.CoreV1Api(api_client=self._api_client)
+            self.apps_v1 = client.AppsV1Api(api_client=self._api_client)
+            self.networking_v1 = client.NetworkingV1Api(api_client=self._api_client)
 
             logger.info("Kubernetes client initialized successfully")
 
@@ -85,18 +89,10 @@ class KubernetesController:
             for pod in pods.items:
                 # Handle container statuses safely
                 container_statuses = pod.status.container_statuses
-                restarts = (
-                    container_statuses[0].restart_count
-                    if container_statuses
-                    else 0
-                )
+                restarts = container_statuses[0].restart_count if container_statuses else 0
 
                 # Handle creation timestamp safely
-                creation_time = (
-                    pod.metadata.creation_timestamp.isoformat()
-                    if pod.metadata.creation_timestamp
-                    else None
-                )
+                creation_time = pod.metadata.creation_timestamp.isoformat() if pod.metadata.creation_timestamp else None
 
                 pod_info = {
                     "name": pod.metadata.name,
@@ -115,14 +111,10 @@ class KubernetesController:
             logger.error(f"Error listing pods in namespace {namespace}: {e}")
             return []
 
-    def list_deployments(
-        self, namespace: str = "default"
-    ) -> List[Dict[str, Any]]:
+    def list_deployments(self, namespace: str = "default") -> List[Dict[str, Any]]:
         """List deployments in a namespace"""
         try:
-            deployments = self.apps_v1.list_namespaced_deployment(
-                namespace=namespace
-            )
+            deployments = self.apps_v1.list_namespaced_deployment(namespace=namespace)
             deployment_list = []
 
             for deployment in deployments.items:
@@ -131,190 +123,29 @@ class KubernetesController:
                     "namespace": deployment.metadata.namespace,
                     "replicas": deployment.spec.replicas,
                     "ready_replicas": (deployment.status.ready_replicas or 0),
-                    "available_replicas": (
-                        deployment.status.available_replicas or 0
-                    ),
-                    "created": (
-                        deployment.metadata.creation_timestamp.isoformat()
-                    ),
+                    "available_replicas": (deployment.status.available_replicas or 0),
+                    "created": (deployment.metadata.creation_timestamp.isoformat()),
                 }
                 deployment_list.append(deployment_info)
 
-            logger.info(
-                f"Found {len(deployment_list)} deployments in "
-                f"namespace {namespace}"
-            )
+            logger.info(f"Found {len(deployment_list)} deployments in " f"namespace {namespace}")
             return deployment_list
 
         except ApiException as e:
-            error_msg = (
-                f"Error listing deployments in namespace " f"{namespace}: {e}"
-            )
+            error_msg = f"Error listing deployments in namespace " f"{namespace}: {e}"
             logger.error(error_msg)
             return []
 
-    def deploy_from_yaml(
-        self, yaml_file: str, namespace: str = "default"
-    ) -> bool:
-        """Deploy resources from YAML file"""
-        try:
-            with open(yaml_file, "r") as file:
-                resources = yaml.safe_load_all(file)
+    def deploy_from_yaml(self, yaml_file: str, namespace: str = "default") -> bool:
+        """Deploy resources from a multi-document Kubernetes manifest file."""
+        return apply_manifests_from_file(
+            self._api_client,
+            yaml_file,
+            namespace,
+            allowed_kinds=_SUPPORTED_MANIFEST_KINDS,
+        )
 
-                for resource in resources:
-                    if not resource:
-                        continue
-
-                    kind = resource.get("kind")
-                    metadata = resource.get("metadata", {})
-                    resource_name = metadata.get("name", "unknown")
-
-                    logger.info(f"Deploying {kind}: {resource_name}")
-
-                    if kind == "Deployment":
-                        self._deploy_deployment(resource, namespace)
-                    elif kind == "Service":
-                        self._deploy_service(resource, namespace)
-                    elif kind == "ConfigMap":
-                        self._deploy_configmap(resource, namespace)
-                    elif kind == "Secret":
-                        self._deploy_secret(resource, namespace)
-                    else:
-                        logger.warning(f"Unsupported resource type: {kind}")
-
-                logger.info(f"Deployed resources from {yaml_file}")
-                return True
-
-        except FileNotFoundError:
-            logger.error(f"YAML file not found: {yaml_file}")
-            return False
-        except yaml.YAMLError as e:
-            logger.error(f"Error parsing YAML file {yaml_file}: {e}")
-            return False
-        except ApiException as e:
-            logger.error(f"Kubernetes API error deploying {yaml_file}: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error deploying {yaml_file}: {e}")
-            return False
-
-    def _deploy_deployment(
-        self, resource: Dict[str, Any], namespace: str
-    ) -> None:
-        """Deploy a Deployment resource"""
-        try:
-            # Set namespace if not specified
-            if "namespace" not in resource["metadata"]:
-                resource["metadata"]["namespace"] = namespace
-
-            deployment = client.V1Deployment(**resource)
-            self.apps_v1.create_namespaced_deployment(
-                namespace=namespace, body=deployment
-            )
-
-            name = resource["metadata"]["name"]
-            logger.info(f"Deployment {name} created successfully")
-
-        except ApiException as e:
-            if e.status == 409:  # Already exists
-                error_msg = f"Deployment already exists, updating: {e}"
-                logger.warning(error_msg)
-                self._update_deployment(resource, namespace)
-            else:
-                logger.error(f"Error creating deployment: {e}")
-                raise
-
-    def _deploy_service(
-        self, resource: Dict[str, Any], namespace: str
-    ) -> None:
-        """Deploy a Service resource"""
-        try:
-            if "namespace" not in resource["metadata"]:
-                resource["metadata"]["namespace"] = namespace
-
-            service = client.V1Service(**resource)
-            self.core_v1.create_namespaced_service(
-                namespace=namespace, body=service
-            )
-
-            name = resource["metadata"]["name"]
-            logger.info(f"Service {name} created successfully")
-
-        except ApiException as e:
-            if e.status == 409:
-                error_msg = f"Service already exists: {e}"
-                logger.warning(error_msg)
-            else:
-                logger.error(f"Error creating service: {e}")
-                raise
-
-    def _deploy_configmap(
-        self, resource: Dict[str, Any], namespace: str
-    ) -> None:
-        """Deploy a ConfigMap resource"""
-        try:
-            if "namespace" not in resource["metadata"]:
-                resource["metadata"]["namespace"] = namespace
-
-            configmap = client.V1ConfigMap(**resource)
-            self.core_v1.create_namespaced_config_map(
-                namespace=namespace, body=configmap
-            )
-
-            name = resource["metadata"]["name"]
-            logger.info(f"ConfigMap {name} created successfully")
-
-        except ApiException as e:
-            if e.status == 409:
-                error_msg = f"ConfigMap already exists: {e}"
-                logger.warning(error_msg)
-            else:
-                logger.error(f"Error creating configmap: {e}")
-                raise
-
-    def _deploy_secret(self, resource: Dict[str, Any], namespace: str) -> None:
-        """Deploy a Secret resource"""
-        try:
-            if "namespace" not in resource["metadata"]:
-                resource["metadata"]["namespace"] = namespace
-
-            secret = client.V1Secret(**resource)
-            self.core_v1.create_namespaced_secret(
-                namespace=namespace, body=secret
-            )
-
-            name = resource["metadata"]["name"]
-            logger.info(f"Secret {name} created successfully")
-
-        except ApiException as e:
-            if e.status == 409:
-                error_msg = f"Secret already exists: {e}"
-                logger.warning(error_msg)
-            else:
-                logger.error(f"Error creating secret: {e}")
-                raise
-
-    def _update_deployment(
-        self, resource: Dict[str, Any], namespace: str
-    ) -> None:
-        """Update an existing deployment"""
-        try:
-            deployment = client.V1Deployment(**resource)
-            name = resource["metadata"]["name"]
-
-            self.apps_v1.patch_namespaced_deployment(
-                name=name, namespace=namespace, body=deployment
-            )
-
-            logger.info(f"Deployment {name} updated successfully")
-
-        except ApiException as e:
-            logger.error(f"Error updating deployment: {e}")
-            raise
-
-    def scale_deployment(
-        self, name: str, replicas: int, namespace: str = "default"
-    ) -> bool:
+    def scale_deployment(self, name: str, replicas: int, namespace: str = "default") -> bool:
         """Scale a deployment"""
         try:
             # Create scale object
@@ -324,9 +155,7 @@ class KubernetesController:
             )
 
             # Scale the deployment
-            self.apps_v1.patch_namespaced_deployment_scale(
-                name=name, namespace=namespace, body=scale
-            )
+            self.apps_v1.patch_namespaced_deployment_scale(name=name, namespace=namespace, body=scale)
 
             logger.info(f"Deployment {name} scaled to {replicas} replicas")
             return True
@@ -343,9 +172,7 @@ class KubernetesController:
     def delete_deployment(self, name: str, namespace: str = "default") -> bool:
         """Delete a deployment"""
         try:
-            self.apps_v1.delete_namespaced_deployment(
-                name=name, namespace=namespace
-            )
+            self.apps_v1.delete_namespaced_deployment(name=name, namespace=namespace)
 
             logger.info(f"Deployment {name} deleted successfully")
             return True
@@ -359,14 +186,15 @@ class KubernetesController:
             return False
 
     def get_pod_logs(
-        self, pod_name: str, namespace: str = "default", container: str = None
+        self,
+        pod_name: str,
+        namespace: str = "default",
+        container: Optional[str] = None,
     ) -> str:
         """Get logs from a pod"""
         try:
-            logs = self.core_v1.read_namespaced_pod_log(
-                name=pod_name, namespace=namespace, container=container
-            )
-            return logs
+            logs = self.core_v1.read_namespaced_pod_log(name=pod_name, namespace=namespace, container=container)
+            return str(logs)
 
         except ApiException as e:
             error_msg = f"Error getting logs for pod {pod_name}: {e}"
@@ -386,9 +214,7 @@ class KubernetesController:
             cluster_info = {
                 "timestamp": datetime.now().isoformat(),
                 "node_count": len(nodes.items),
-                "api_resources": (
-                    len(version.resources) if version.resources else 0
-                ),
+                "api_resources": (len(version.resources) if version.resources else 0),
             }
 
             return cluster_info

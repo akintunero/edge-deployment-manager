@@ -4,9 +4,10 @@ Docker Handler for Edge Deployment Manager
 Handles Docker container operations for edge deployments
 """
 
-import docker
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import docker
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class DockerHandler:
     """Handle Docker container operations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Docker client"""
         try:
             self.client = docker.from_env()
@@ -26,20 +27,14 @@ class DockerHandler:
             logger.error(f"Unexpected error initializing Docker client: {e}")
             raise
 
-    def list_containers(
-        self, all_containers: bool = False
-    ) -> List[Dict[str, Any]]:
+    def list_containers(self, all_containers: bool = False) -> List[Dict[str, Any]]:
         """List all containers"""
         try:
             containers = self.client.containers.list(all=all_containers)
             container_list = []
 
             for container in containers:
-                image_tag = (
-                    container.image.tags[0]
-                    if container.image.tags
-                    else container.image.id
-                )
+                image_tag = container.image.tags[0] if container.image.tags else container.image.id
                 container_info = {
                     "id": container.id,
                     "name": container.name,
@@ -60,7 +55,7 @@ class DockerHandler:
             logger.error(f"Unexpected error listing containers: {e}")
             return []
 
-    def get_container(self, container_id: str):
+    def get_container(self, container_id: str) -> Any:
         """Get container by ID or name"""
         try:
             return self.client.containers.get(container_id)
@@ -92,9 +87,7 @@ class DockerHandler:
             volumes = config.get("volumes", {})
             command = config.get("command")
             working_dir = config.get("working_dir")
-            restart_policy = config.get(
-                "restart_policy", {"Name": "unless-stopped"}
-            )
+            restart_policy = config.get("restart_policy", {"Name": "unless-stopped"})
 
             # Deploy container
             container = self.client.containers.run(
@@ -111,7 +104,7 @@ class DockerHandler:
             )
 
             logger.info(f"Container {container.id} deployed successfully")
-            return container.id
+            return str(container.id)
 
         except docker.errors.ImageNotFound as e:
             logger.error(f"Image not found: {e}")
@@ -165,16 +158,14 @@ class DockerHandler:
         try:
             container = self.get_container(container_id)
             if container:
-                return container.logs().decode("utf-8")
+                return str(container.logs().decode("utf-8"))
             return ""
         except docker.errors.DockerException as e:
             error_msg = f"Error getting logs for container {container_id}: {e}"
             logger.error(error_msg)
             return ""
 
-    def get_container_stats(
-        self, container_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_container_stats(self, container_id: str) -> Optional[Dict[str, Any]]:
         """Get container resource usage statistics"""
         try:
             container = self.get_container(container_id)
@@ -189,9 +180,7 @@ class DockerHandler:
             eth0_stats = networks.get("eth0", {})
 
             return {
-                "cpu_usage": cpu_stats.get("cpu_usage", {}).get(
-                    "total_usage", 0
-                ),
+                "cpu_usage": cpu_stats.get("cpu_usage", {}).get("total_usage", 0),
                 "memory_usage": memory_stats.get("usage", 0),
                 "memory_limit": memory_stats.get("limit", 0),
                 "network_rx": eth0_stats.get("rx_bytes", 0),
@@ -200,10 +189,7 @@ class DockerHandler:
             }
 
         except docker.errors.DockerException as e:
-            error_msg = (
-                f"Unexpected error getting stats for "
-                f"container {container_id}: {e}"
-            )
+            error_msg = f"Unexpected error getting stats for " f"container {container_id}: {e}"
             logger.error(error_msg)
             return None
         except Exception as e:
@@ -221,15 +207,11 @@ class DockerHandler:
             logger.error(f"Error pulling image {image}: {e}")
             return False
 
-    def build_image(
-        self, path: str, tag: str, dockerfile: str = "Dockerfile"
-    ) -> Optional[str]:
+    def build_image(self, path: str, tag: str, dockerfile: str = "Dockerfile") -> Optional[str]:
         """Build an image from Dockerfile"""
         try:
             logger.info(f"Building image {tag} from {path}")
-            image, logs = self.client.images.build(
-                path=path, tag=tag, dockerfile=dockerfile, decode=True
-            )
+            image, logs = self.client.images.build(path=path, tag=tag, dockerfile=dockerfile, decode=True)
 
             # Log build output
             for log in logs:
@@ -237,7 +219,7 @@ class DockerHandler:
                     logger.info(log["stream"].strip())
 
             logger.info(f"Image {tag} built successfully")
-            return image.id
+            return str(image.id)
 
         except docker.errors.BuildError as e:
             logger.error(f"Error building image {tag}: {e}")

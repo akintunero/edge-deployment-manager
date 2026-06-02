@@ -1,0 +1,3 @@
+# Source of truth for production dependencies.
+# Compile lock file: pip install pip-tools && python3 scripts/lock_requirements.py
+-r requirements.txt

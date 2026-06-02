@@ -1,4 +1,19 @@
 services:
+  control-plane:
+    container_name: edge-control-plane
+    build: .
+    command: ["python", "-m", "src.control_plane.main", "--config", "configs/control-plane.yaml"]
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - CONTROL_PLANE_API_TOKEN=${CONTROL_PLANE_API_TOKEN}
+      - EDGE_COMMAND_SIGNING_KEY_HEX=${EDGE_COMMAND_SIGNING_KEY_HEX}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mosquitto
+
   edge-manager:
     container_name: edge-manager
     build: .

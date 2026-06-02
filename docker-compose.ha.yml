@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: edge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edge
+      POSTGRES_PASSWORD: edge
+      POSTGRES_DB: edge_control_plane
+    ports:
+      - "5432:5432"
+    volumes:
+      - edge-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edge -d edge_control_plane"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: edge-mosquitto
+    restart: unless-stopped
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./certs:/mosquitto/certs:ro
+      - ./configs/mosquitto.tls.conf:/mosquitto/config/mosquitto.conf:ro
+
+  control-plane-a:
+    container_name: edge-control-plane-a
+    hostname: control-plane-a
+    build: .
+    command:
+      [
+        "python",
+        "-m",
+        "src.control_plane.main",
+        "--config",
+        "configs/control-plane-ha.yaml",
+      ]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CONTROL_PLANE_DATABASE_URL: postgresql://edge:edge@postgres:5432/edge_control_plane
+      HOSTNAME: control-plane-a
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./data:/app/data
+      - ./configs/control-plane-ha.yaml:/app/configs/control-plane-ha.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+  control-plane-b:
+    container_name: edge-control-plane-b
+    hostname: control-plane-b
+    build: .
+    command:
+      [
+        "python",
+        "-m",
+        "src.control_plane.main",
+        "--config",
+        "configs/control-plane-ha.yaml",
+      ]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CONTROL_PLANE_DATABASE_URL: postgresql://edge:edge@postgres:5432/edge_control_plane
+      HOSTNAME: control-plane-b
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./data:/app/data
+      - ./configs/control-plane-ha.yaml:/app/configs/control-plane-ha.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+volumes:
+  edge-postgres-data:

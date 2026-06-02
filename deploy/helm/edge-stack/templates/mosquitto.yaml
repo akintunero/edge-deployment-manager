@@ -1,0 +1,56 @@
+{{- if .Values.mosquitto.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-mosquitto
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: mosquitto
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: mosquitto
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: mosquitto
+          image: {{ .Values.mosquitto.image }}
+          ports:
+            - name: mqtts
+              containerPort: {{ .Values.mosquitto.service.port }}
+          volumeMounts:
+            - name: config
+              mountPath: /mosquitto/config
+            - name: certs
+              mountPath: /mosquitto/certs
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "edge-stack.fullname" . }}-mosquitto
+        - name: certs
+          secret:
+            secretName: {{ required "mosquitto.tls.existingSecret is required" .Values.mosquitto.tls.existingSecret }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-mosquitto
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+spec:
+  selector:
+    app.kubernetes.io/component: mosquitto
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: mqtts
+      port: {{ .Values.mosquitto.service.port }}
+      targetPort: mqtts
+{{- end }}

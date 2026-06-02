@@ -1,0 +1,20 @@
+{{- if .Values.mosquitto.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-mosquitto
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+data:
+  mosquitto.conf: |
+    listener {{ .Values.mosquitto.service.port }}
+    protocol mqtt
+    cafile /mosquitto/certs/ca.crt
+    certfile /mosquitto/certs/mqtt-server.crt
+    keyfile /mosquitto/certs/mqtt-server.key
+    require_certificate true
+    use_identity_as_username true
+    allow_anonymous false
+    persistence true
+{{- end }}

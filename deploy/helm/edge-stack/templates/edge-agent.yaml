@@ -1,0 +1,130 @@
+{{- if .Values.edgeAgent.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-edge-agent
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: edge-agent
+data:
+  agent-config.yaml: |
+    mqtt:
+      broker: {{ include "edge-stack.fullname" . }}-mosquitto
+      port: {{ .Values.mosquitto.service.port }}
+      keepalive: 60
+      client_id: {{ .Values.edgeAgent.deviceId | quote }}
+      topics:
+        commands: edge/commands
+        deployments: edge/deployments
+        status: edge/status
+        logs: edge/logs
+      tls:
+        enabled: true
+        ca_cert: /etc/edge/ca.crt
+        cert_file: /etc/edge/agent.crt
+        key_file: /etc/edge/agent.key
+      reconnect:
+        initial_delay_seconds: 1
+        max_delay_seconds: 30
+    deployment:
+      enable_docker: {{ .Values.edgeAgent.docker.enabled }}
+      enable_kubernetes: false
+    security:
+      device_id: {{ .Values.edgeAgent.deviceId | quote }}
+      require_signed_commands: true
+      max_clock_skew_seconds: 300
+      nonce_ttl_seconds: 900
+      replay_store:
+        type: redis
+        url_env: EDGE_REDIS_URL
+      trusted_signers:
+        - issuer: control-plane
+          public_key_hex: {{ required "edgeAgent.signingPublicKeyHex" .Values.edgeAgent.signingPublicKeyHex | quote }}
+      policy:
+        allowed_actions: [deploy]
+        allowed_deployment_types: [docker]
+        allowed_images: ["nginx:*"]
+    monitoring:
+      enabled: true
+      host: 0.0.0.0
+      port: 9090
+      require_mqtt: true
+    logging:
+      level: INFO
+      json: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-edge-agent
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: edge-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: edge-agent
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: edge-agent
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: edge-agent
+          image: "{{ .Values.edgeAgent.image.repository }}:{{ .Values.edgeAgent.image.tag }}"
+          imagePullPolicy: {{ .Values.edgeAgent.image.pullPolicy }}
+          command:
+            - edge-deployment-manager
+            - --config
+            - /app/config/agent-config.yaml
+          ports:
+            - name: metrics
+              containerPort: 9090
+          env:
+            {{- if .Values.edgeAgent.redis.url }}
+            - name: EDGE_REDIS_URL
+              value: {{ .Values.edgeAgent.redis.url | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: agent-config
+              mountPath: /app/config
+            - name: agent-credentials
+              mountPath: /etc/edge
+              readOnly: true
+            {{- if .Values.edgeAgent.docker.enabled }}
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+            {{- end }}
+      volumes:
+        - name: agent-config
+          configMap:
+            name: {{ include "edge-stack.fullname" . }}-edge-agent
+        - name: agent-credentials
+          secret:
+            secretName: {{ required "edgeAgent.credentialsSecret" .Values.edgeAgent.credentialsSecret }}
+        {{- if .Values.edgeAgent.docker.enabled }}
+        - name: docker-socket
+          hostPath:
+            path: {{ .Values.edgeAgent.docker.socketPath }}
+            type: Socket
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "edge-stack.fullname" . }}-edge-agent
+  labels:
+    {{- include "edge-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: edge-agent
+spec:
+  selector:
+    app.kubernetes.io/component: edge-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+{{- end }}

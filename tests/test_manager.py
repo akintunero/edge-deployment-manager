@@ -125,7 +125,7 @@ class TestEdgeDeploymentManager(unittest.TestCase):
         # Verify handlers were created
         self.assertIsNotNone(manager.mqtt_handler)
         self.assertIsNotNone(manager.docker_handler)
-        self.assertIsNotNone(manager.k8s_controller)
+        self.assertIsNone(manager.k8s_controller)
 
 
 class TestMQTTHandler(unittest.TestCase):
@@ -154,16 +154,18 @@ class TestMQTTHandler(unittest.TestCase):
 
     @patch('src.mqtt_handler.mqtt.Client')
     def test_mqtt_connection(self, mock_client):
-        """Test MQTT connection"""
+        """Test MQTT connection establishes via mocked broker"""
         mock_client_instance = Mock()
         mock_client.return_value = mock_client_instance
-        
+
         handler = MQTTHandler(self.config)
-        
-        # Test connection
-        result = handler.start()
-        # Should return False since we can't actually connect in tests
-        self.assertFalse(result)
+
+        def _simulate_connect(*_args, **_kwargs):
+            handler._on_connect(mock_client_instance, None, None, 0)
+
+        mock_client_instance.connect.side_effect = _simulate_connect
+        handler.start()
+        self.assertTrue(handler.is_connected())
 
 
 class TestDockerHandler(unittest.TestCase):

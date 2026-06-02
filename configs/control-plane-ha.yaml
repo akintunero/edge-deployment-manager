@@ -1,0 +1,76 @@
+# HA control plane (use with docker-compose.ha.yml)
+secrets:
+  directory: "/run/secrets"
+  require_non_empty: false
+
+ha:
+  enabled: true
+  leader_lock_key: 84001
+  holder_id_env: "HOSTNAME"
+  poll_interval_seconds: 2
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  api_token_env: "CONTROL_PLANE_API_TOKEN"
+  rate_limit:
+    enabled: true
+    max_requests: 120
+    window_seconds: 60
+  tls:
+    enabled: true
+    cert_file: "certs/control-plane.crt"
+    key_file: "certs/control-plane.key"
+    ca_cert: "certs/ca.crt"
+    require_client_cert: false
+
+logging:
+  level: "INFO"
+  json: true
+
+signing:
+  issuer: "control-plane"
+  private_key_env: "EDGE_COMMAND_SIGNING_KEY_HEX"
+
+registry:
+  backend: postgres
+  url_env: "CONTROL_PLANE_DATABASE_URL"
+
+audit:
+  path: "data/audit.log"
+
+mqtt:
+  broker: "mosquitto"
+  port: 8883
+  keepalive: 60
+  client_id: "edge-control-plane"
+  command_topic: "edge/commands"
+  connect_timeout: 10
+  tls:
+    enabled: true
+    ca_cert: "certs/ca.crt"
+    cert_file: "certs/control-plane-mqtt.crt"
+    key_file: "certs/control-plane-mqtt.key"
+
+bootstrap:
+  enabled: true
+  token_env: "EDGE_BOOTSTRAP_TOKEN"
+  rate_limit:
+    enabled: true
+    max_requests: 10
+    window_seconds: 60
+  cert_validity_days: 365
+  pki:
+    ca_cert: "certs/ca.crt"
+    ca_key: "certs/ca.key"
+  credential_paths:
+    ca_cert: "/etc/edge/ca.crt"
+    cert_file: "/etc/edge/agent.crt"
+    key_file: "/etc/edge/agent.key"
+  default_policy:
+    allowed_actions:
+      - deploy
+    allowed_deployment_types:
+      - docker
+    allowed_images:
+      - "nginx:*"

@@ -52,7 +52,6 @@ For questions about contributing or the project:
 - **Maintainer**: Olúmáyòwá Akinkuehinmi
 - **Email**: [akintunero101@gmail.com](mailto:akintunero101@gmail.com)
 - **GitHub Issues**: [Create an issue](https://github.com/akintunero/edge-deployment-manager/issues)
-- **GitHub Discussions**: [Start a discussion](https://github.com/akintunero/edge-deployment-manager/discussions)
 
 ---
 

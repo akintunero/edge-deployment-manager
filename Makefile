@@ -1,7 +1,7 @@
 # Makefile for Edge Deployment Manager
 # Common development tasks and shortcuts
 
-.PHONY: help install install-dev test test-cov lint format clean docs build check-all
+.PHONY: help install install-dev test test-cov lint format clean docs build check-all setup-dev prod-up prod-down prod-deploy-example
 
 # Default target
 help:
@@ -89,11 +89,19 @@ build:
 	python -m build
 
 check-all: lint type-check security test
+
+ci-check-all: ci-lint ci-typecheck ci-security ci-test
 	@echo "✅ All checks passed!"
 
 # Application
 run:
-	python src/manager.py
+	python -m src.manager
+
+run-control-plane:
+	python -m src.control_plane.main --config configs/control-plane.yaml
+
+generate-pki:
+	python3 scripts/generate_pki.py --output-dir certs
 
 docker-build:
 	docker build -t edge-deployment-manager .
@@ -114,13 +122,49 @@ ci-lint:
 	black --check src/ --line-length=120
 	isort --check-only src/ --profile=black --line-length=120
 
+ci-typecheck:
+	mypy src/
+
 ci-security:
 	bandit -r src/ -f json -o bandit-report.json
 	safety check
 
 # Development helpers
-setup-dev: install-dev
-	@echo "✅ Development environment setup complete!"
+setup-dev:
+	python3 scripts/setup_dev.py
+
+prod-up: setup-dev
+	docker compose -f docker-compose.prod.yml up -d --build mosquitto control-plane
+	python3 scripts/wait_and_enroll.py
+	docker compose -f docker-compose.prod.yml up -d --build edge-agent
+	@echo "Production stack is up:"
+	@echo "  Control plane: https://localhost:8080/health"
+	@echo "  Agent metrics: http://localhost:9090/metrics"
+
+prod-down:
+	docker compose -f docker-compose.prod.yml down
+
+ha-up: setup-dev
+	docker compose -f docker-compose.ha.yml up -d --build postgres mosquitto control-plane-a control-plane-b
+	@echo "HA control plane:"
+	@echo "  Replica A: https://localhost:8080/v1/leader"
+	@echo "  Replica B: https://localhost:8081/v1/leader"
+
+ha-down:
+	docker compose -f docker-compose.ha.yml down
+
+e2e-test:
+	python3 scripts/e2e_stack_test.py --timeout 240
+
+prod-deploy-example:
+	@test -n "$$(grep CONTROL_PLANE_API_TOKEN .env | cut -d= -f2)" || (echo "Run make setup-dev first" && exit 1)
+	curl -sk -X POST "https://localhost:8080/v1/devices/edge-agent-001/commands" \
+		-H "Authorization: Bearer $$(grep CONTROL_PLANE_API_TOKEN .env | cut -d= -f2)" \
+		-H "Content-Type: application/json" \
+		-d @examples/nginx-deploy-command.json
+
+setup-dev-legacy: install-dev
+	@echo "Development environment setup complete!"
 	@echo "Run 'make test' to verify installation"
 
 quick-test: format lint test
@@ -131,6 +175,10 @@ pre-commit: format lint type-check test
 	@echo "✅ Pre-commit checks complete!"
 
 # Release helpers
+lock-deps:
+	pip install pip-tools
+	python3 scripts/lock_requirements.py
+
 release-check: clean check-all build
 	@echo "✅ Release checks complete!"
 

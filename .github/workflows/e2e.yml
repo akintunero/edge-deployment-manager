@@ -1,0 +1,64 @@
+name: E2E Stack
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  prod-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Bootstrap local stack config
+        run: make setup-dev
+
+      - name: Start Mosquitto and control plane
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build mosquitto control-plane
+
+      - name: Enroll edge agent
+        run: python3 scripts/wait_and_enroll.py
+
+      - name: Start edge agent
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build edge-agent
+
+      - name: Wait for agent readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9090/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "edge agent did not become ready"
+          docker compose -f docker-compose.prod.yml logs edge-agent
+          exit 1
+
+      - name: Run E2E verification
+        run: python3 scripts/e2e_stack_test.py --timeout 240
+
+      - name: Collect logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml logs
+
+      - name: Stop stack
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down -v
