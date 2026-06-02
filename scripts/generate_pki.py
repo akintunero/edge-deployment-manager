@@ -33,7 +33,7 @@ def main() -> None:
         mqtt_cert,
         mqtt_key,
         common_name=args.mqtt_cn,
-        san_dns_names=("localhost", "mqtt-broker"),
+        san_dns_names=("localhost", "mqtt-broker", "mosquitto"),
     )
     DeviceCertificateAuthority.generate_server_certificate(
         ca_cert,

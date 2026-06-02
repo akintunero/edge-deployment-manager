@@ -84,7 +84,7 @@ class SqliteReplayStore(ReplayStore):
                 """
             )
             connection.execute(
-                "CREATE INDEX IF NOT EXISTS idx_command_nonces_expires " "ON command_nonces (expires_at)"
+                ("CREATE INDEX IF NOT EXISTS idx_command_nonces_expires " "ON command_nonces (expires_at)")
             )
             connection.commit()
 

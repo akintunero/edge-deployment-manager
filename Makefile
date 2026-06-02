@@ -119,7 +119,7 @@ ci-test:
 
 ci-lint:
 	flake8 src/ --max-line-length=120 --ignore=E501,W503
-	black --check src/ --line-length=120
+	black --check src/ --line-length=120 --target-version py312
 	isort --check-only src/ --profile=black --line-length=120
 
 ci-typecheck:

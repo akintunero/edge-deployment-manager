@@ -27,7 +27,10 @@ class SqliteDeviceRegistry:
         with self._lock:
             with self._connect() as connection:
                 rows = connection.execute(
-                    "SELECT device_id, status, policy_json, created_at, updated_at " "FROM devices ORDER BY device_id"
+                    (
+                        "SELECT device_id, status, policy_json, created_at, updated_at "
+                        "FROM devices ORDER BY device_id"
+                    ),
                 ).fetchall()
             return [self._row_to_device(row) for row in rows]
 
@@ -35,7 +38,10 @@ class SqliteDeviceRegistry:
         with self._lock:
             with self._connect() as connection:
                 row = connection.execute(
-                    "SELECT device_id, status, policy_json, created_at, updated_at " "FROM devices WHERE device_id = ?",
+                    (
+                        "SELECT device_id, status, policy_json, created_at, updated_at "
+                        "FROM devices WHERE device_id = ?"
+                    ),
                     (device_id,),
                 ).fetchone()
             return self._row_to_device(row) if row else None
@@ -88,7 +94,10 @@ class SqliteDeviceRegistry:
                 connection.commit()
 
                 updated = connection.execute(
-                    "SELECT device_id, status, policy_json, created_at, updated_at " "FROM devices WHERE device_id = ?",
+                    (
+                        "SELECT device_id, status, policy_json, created_at, updated_at "
+                        "FROM devices WHERE device_id = ?"
+                    ),
                     (device_id,),
                 ).fetchone()
             return self._row_to_device(updated)
