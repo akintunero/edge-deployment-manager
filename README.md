@@ -3,7 +3,7 @@
 Signed, policy-bound application deployments for edge fleets over **MQTT**, with a small **control plane** and **edge agent**.
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/akintunero/edge-deployment-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/akintunero/edge-deployment-manager/actions/workflows/ci.yml)
 [![E2E](https://github.com/akintunero/edge-deployment-manager/actions/workflows/e2e.yml/badge.svg)](https://github.com/akintunero/edge-deployment-manager/actions/workflows/e2e.yml)
 
